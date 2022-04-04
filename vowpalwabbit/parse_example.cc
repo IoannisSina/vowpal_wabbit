@@ -18,10 +18,76 @@
 #include <cctype>
 #include <cmath>
 
+// For screening exercise
+#include <climits>
+#include <string>
+
+// Global variables
+std::vector<std::vector<std::pair<std::string, int>>> count_features;  // For each line (example) count features of each namespace. Pair <namespace, count_features>
+std::vector<std::pair<std::string, int>> count_namespace_occurrences;  // Count all occurrences in all lines(examples)
+
+void add_to_vector(std::string namespace_)
+{
+  bool exists = false;
+  for (auto& temp_pair: count_namespace_occurrences)
+  {
+    if (namespace_.compare(temp_pair.first) == 0)
+    {
+      temp_pair.second++;  // Add 1 to occurrences
+      exists = true;
+    }
+  }
+
+  // If the namespace does not already exist, add it to the vector with value of occurrences set to 1
+  if (!exists)
+  {
+    count_namespace_occurrences.push_back(std::make_pair(namespace_, 1));
+  }
+}
+
+void screening_exercise(int index, char* line, int num_of_chars)
+{
+
+  /*
+  This fynction will be called every time a | is found.
+  */
+
+  index++;  // Go to next character
+
+  // Check if there is a namespace. If the current character is space, then ther is no namespace.
+  if (line[index] != ' ')
+  {
+    std::string namespace_;
+    while ( (index < num_of_chars) && (line[index] != ' '))
+    {
+      namespace_ += line[index++];
+    }
+
+    add_to_vector(namespace_);
+
+
+    
+  }
+  std::cout << line[index];
+
+}
+
 size_t read_features(io_buf& buf, char*& line, size_t& num_chars)
 {
   line = nullptr;
   size_t num_chars_initial = buf.readto(line, '\n');
+
+  // Print the wanted data when the parsing is finished
+  if (num_chars_initial == 0)
+  {
+    std::cout << "\n\nTotal counts:";
+    for (auto& temp_pair: count_namespace_occurrences)
+    {
+      std::cout << " " <<temp_pair.first << ": " << temp_pair.second << ",";
+    }
+    std::cout << "\n\n";
+  }
+  
   if (num_chars_initial < 1) { return num_chars_initial; }
   num_chars = num_chars_initial;
   if (line[0] == '\xef' && num_chars >= 3 && line[1] == '\xbb' && line[2] == '\xbf')
@@ -45,6 +111,18 @@ int read_features_string(VW::workspace* all, io_buf& buf, VW::v_array<VW::exampl
     // This branch will get hit once we have reached EOF of the input device.
     return static_cast<int>(num_bytes_consumed);
   }
+
+  // For each | char found in the line call function screening_exercise
+  int num_of_chars = (num_bytes_consumed < INT_MAX) ? (int)num_bytes_consumed : num_bytes_consumed;
+  for(int i = 0; i < num_of_chars; i++)
+  {
+    if (line[i] == '|')
+    {
+      screening_exercise(i, line, num_of_chars);
+    }
+  }
+  
+  
 
   VW::string_view example(line, num_chars);
   // If this example is empty substring_to_example will mark it as a newline example.
