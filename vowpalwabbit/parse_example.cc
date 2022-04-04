@@ -26,7 +26,7 @@
 std::vector<std::vector<std::pair<std::string, int>>> count_features;  // For each line (example) count features of each namespace. Pair <namespace, count_features>
 std::vector<std::pair<std::string, int>> count_namespace_occurrences;  // Count all occurrences in all lines(examples)
 
-void add_to_vector(std::string namespace_)
+void add_namespace_to_vector(std::string namespace_)
 {
   bool exists = false;
   for (auto& temp_pair: count_namespace_occurrences)
@@ -45,11 +45,50 @@ void add_to_vector(std::string namespace_)
   }
 }
 
-void screening_exercise(int index, char* line, int num_of_chars)
+void screening_exercise_2(int index, char* line, int num_of_chars, std::string namespace_, std::vector<std::pair<std::string, int>>& temp_count_features)
 {
 
   /*
-  This fynction will be called every time a | is found.
+  This functions counts the features of a namespace and updates the temp_count_features vector
+  */
+
+  index++;  // Go to next character
+  int feature_count = 0;
+
+  while ( (index < num_of_chars) && (line[index] != '|') )
+  {
+    // The number of features is equal to the number of spaces after the namespace (and the first space) after it
+    if ( (line[index] == ' ') || (index == num_of_chars-1))
+    {
+      feature_count++;
+    }
+    index++;
+  }
+
+  // Add the feature count to the vector
+  bool exists = false;
+
+  for (auto& temp_pair: temp_count_features)
+  {
+    if (namespace_.compare(temp_pair.first) == 0)
+    {
+      temp_pair.second += feature_count;  // Add 1 to occurrences
+      exists = true;
+    }
+  }
+
+  // If the namespace does not already exist, add it to the vector with value of occurrences set to 1
+  if (!exists)
+  {
+    temp_count_features.push_back(std::make_pair(namespace_, feature_count));
+  }
+}
+
+void screening_exercise_1(int index, char* line, int num_of_chars, std::vector<std::pair<std::string, int>>& temp_count_features)
+{
+
+  /*
+  This function will be called every time a | is found.
   */
 
   index++;  // Go to next character
@@ -63,12 +102,11 @@ void screening_exercise(int index, char* line, int num_of_chars)
       namespace_ += line[index++];
     }
 
-    add_to_vector(namespace_);
+    add_namespace_to_vector(namespace_);
 
-
-    
+    // Now count all features of the namespace in this specific example
+    screening_exercise_2(index, line, num_of_chars, namespace_, temp_count_features);
   }
-  std::cout << line[index];
 
 }
 
@@ -80,10 +118,34 @@ size_t read_features(io_buf& buf, char*& line, size_t& num_chars)
   // Print the wanted data when the parsing is finished
   if (num_chars_initial == 0)
   {
-    std::cout << "\n\nTotal counts:";
+    // Print features for every line(example)
+    std::cout << "\n\n";
+    for (auto& example: count_features)
+    {
+      std::cout << "Example:";
+      int size_1 = example.size();
+      for (auto& temp_pair: example)
+      {
+        std::cout << " " << temp_pair.first << ": " << temp_pair.second;
+        if (--size_1 > 0)
+        {
+          std::cout << ",";
+        }
+      }
+      std::cout << "\n";
+    }
+    std::cout << "---";
+
+    // Print total counts
+    int size_2 = count_namespace_occurrences.size();
+    std::cout << "\nTotal counts:";
     for (auto& temp_pair: count_namespace_occurrences)
     {
-      std::cout << " " <<temp_pair.first << ": " << temp_pair.second << ",";
+      std::cout << " " <<temp_pair.first << ": " << temp_pair.second;
+      if (--size_2 > 0)
+      {
+        std::cout << ",";
+      }
     }
     std::cout << "\n\n";
   }
@@ -114,13 +176,15 @@ int read_features_string(VW::workspace* all, io_buf& buf, VW::v_array<VW::exampl
 
   // For each | char found in the line call function screening_exercise
   int num_of_chars = (num_bytes_consumed < INT_MAX) ? (int)num_bytes_consumed : num_bytes_consumed;
+  std::vector<std::pair<std::string, int>> temp_count_features;  // Countes features for this specific line(example)
   for(int i = 0; i < num_of_chars; i++)
   {
     if (line[i] == '|')
     {
-      screening_exercise(i, line, num_of_chars);
+      screening_exercise_1(i, line, num_of_chars, temp_count_features);
     }
   }
+  count_features.push_back(temp_count_features); // Add temp count features to global one
   
   
 
